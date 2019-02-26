@@ -1,6 +1,6 @@
 from __future__ import print_function
-import os
-import os.path
+# import os
+# import os.path
 import math                     # For log10
 import sys                      # For version number
 import string                   # For punctuation
@@ -9,48 +9,12 @@ import json                     # For saving inverted index
 from nltk.stem.porter import *  # sudo pip install nltk
 import requests                 # For getting files from urls
 import re                       # regular expressions
-
-nested_dict = lambda: defaultdict(nested_dict);
-verbose=True;
-
-def disp( nested, dim, label='Disp:', spacer='' ):
-    print( spacer+label );
-    for key, val in nested.items():
-        if dim==1:
-            print( spacer+"   "+key+"="+str( val ) );
-        else:
-            disp( nested[key], dim-1, key, spacer+'   ' );
-
-# Add absolute path to relative path from where code file resides
-def fixPath( filename ):
-    script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
-    return os.path.join(script_dir, 'textFiles1/'+filename)
-
-# Open file, dump to list (endlines removed) and close    
-def readall( filename ):
-    with open( fixPath( filename ) ) as f:
-        out = [line.strip() for line in f]
-        return out;
-
-# Dont want to stem? Pass a dummy stemmer to the index constructor         
-class dummyStemmer:
-    def stem(self, text):
-        return text;
-
-# Wrap porter stemmer with a punctuation remover        
-class Stemmer_killPunct:
-    def __init__( self ):
-        self.stemmer=PorterStemmer();
-        
-    def stem(self, text):
-        return self.stemmer.stem( 
-            "".join(ch for ch in text if ch not in set(string.punctuation))
-        );
+import myutils as UT
 
 # Abstract file ops into simple interface: good, done, nextWord        
 class WordIter(object):
     def __init__(self, filename ):
-        filename=fixPath( filename );
+        filename=UT.fixPath( filename );
         self.words=[];
         self.index=0;
         self.fin=None;
@@ -73,8 +37,9 @@ class WordIter(object):
     def done(self):
         return self.isDone;
 
-    def nextWord(self):             #return single word stripped and lowercase
-        # length=len(self.words);
+    def nextWord(self): 
+        # return single word stripped and lowercase
+        # last word returned is blank, so check done() after nextWord()
         while not len(self.words) or self.index>=len(self.words) :
             line="\n";
             while line=='\n':
@@ -138,9 +103,9 @@ class QueryIndex(object):
         self.collection=setCollection;  # CollectionIndex for tfidf calc
         # inverted index is a 3-d default dict:  index[word][docNum][field]
         # For simpler syntax, this is accessed publicly without get method
-        self.index=nested_dict();   
+        self.index=UT.nested_dict();   
         # doc index is a 2-d dict for doc info:  docIndex[docNum][field]
-        self.docIndex=nested_dict();    
+        self.docIndex=UT.nested_dict();    
         # parseLog stores doc collection traits: sizes, mins, maxes etc
         self.parseLog=ParseLog();
         # note: for QueryIndex, need to call parseDoc separately
@@ -211,19 +176,19 @@ class QueryIndex(object):
             docNode['mag']=math.sqrt( total );
                 
     def serialize( self, filename="index.txt" ):
-        with open( fixPath( filename ), "w" ) as f:
+        with open( UT.fixPath( filename ), "w" ) as f:
             json.dump( self.index, f );
-        with open( fixPath( "d_"+filename ), "w" ) as g:
+        with open( UT.fixPath( "d_"+filename ), "w" ) as g:
             json.dump( self.docIndex, g );
-        with open( fixPath( "n_"+filename ), "w" ) as h:
+        with open( UT.fixPath( "n_"+filename ), "w" ) as h:
             json.dump( str( self.parseLog.numDocsTotal ), h );
             
     def deserialize( self, filename="index.txt" ):
-        with open( fixPath( filename ), "r") as f:
+        with open( UT.fixPath( filename ), "r") as f:
             self.index = json.load( f );
-        with open( fixPath( "d_"+filename ), "r") as g:
+        with open( UT.fixPath( "d_"+filename ), "r") as g:
             self.docIndex = json.load( g );
-        with open( fixPath( "n_"+filename ), "r") as g:
+        with open( UT.fixPath( "n_"+filename ), "r") as g:
             self.parseLog.numDocsTotal = int( json.load( g ) );
             
 class CollectionIndex(QueryIndex):
@@ -264,7 +229,7 @@ class CollectionIndex(QueryIndex):
         # Do end of parse tasks
         self.calcTFIDF();
         self.calcMagnitudes();
-        if verbose:
+        if UT.verbose:
             self.parseLog.disp();
         
     def calcTFIDF( self ):
@@ -333,8 +298,8 @@ class Vector_Model:
         # If refresh set, will parse file to build inverted index
         # If refresh not set, will load json-formatted data
         # Not much difference in speed with small collection
-        self.stemmer=Stemmer_killPunct();
-        self.stops=readall('stoplist.txt');
+        self.stemmer=UT.Stemmer_killPunct();
+        self.stops=UT.readall('stoplist.txt');
         self.lastSearch='';
         self.resultLimit=100;
         if refresh:
@@ -347,7 +312,7 @@ class Vector_Model:
         return self.result;
         
     def disp(self):
-        disp( self.collection.index, 3 );
+        UT.dispMap( self.collection.index, 3 );
         
     def cosineSearch(self, text ):
         # For multi-word search
@@ -369,7 +334,7 @@ class Vector_Model:
     def rankByCosine( self, qIndex, qDoc ):
         # Implement (a dot b)/(|a||b|) for all found docs
         
-        self.docRank=nested_dict();         # docRank[docNum][field]
+        self.docRank=UT.nested_dict();         # docRank[docNum][field]
         mag=qDoc['01']['mag'];              # magnitude of query weights
         # parse query inverted index: look for words in collection
         for qword, qdocList in qIndex.items():
@@ -449,10 +414,10 @@ class Vector_Model:
         
 class trec:
     def __init__( self, model ):
-        self.qList=readall('query_list.txt');           # input file
-        with open( fixPath( "qrels.txt" ),"w+") as F:   # overwrite
+        self.qList=UT.readall('query_list.txt');           # input file
+        with open( UT.fixPath( "qrels.txt" ),"w+") as F:   # overwrite
             pass;
-        with open( fixPath( "qrels.txt" ),"a+") as F:   # output file
+        with open( UT.fixPath( "qrels.txt" ),"a+") as F:   # output file
             for q in self.qList:
                 qNum, qText = self.queryPreprocess(q);  # split the number and text
                 print( qText );
@@ -482,7 +447,6 @@ class trec:
 
 def testCosineSearch():
     model=Vector_Model( "ap89_collection" );   
-    
     while True:
         text = input("Enter 'disp', 'trec', 'q' or type a query  : ").strip().lower();
         if not text:
