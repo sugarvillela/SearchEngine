@@ -21,4 +21,5 @@
 ## Notes:
 * The folders html1, html2 and html3 normally would contain thousands of files. I include 10 each for brevity
 * The stuff in html3 is not needed.  I used these files to provide snippets of un-stemmed content, but it's not a space-efficient solution.
-* See Project Report for further documentation
+* See Project Report for further documentation (ignore all but the Web Search section)
+* See my repo TF_IDF for documentation of the inverted index with TDIDF ranking: https://github.com/sugarvillela/TF_IDF 
